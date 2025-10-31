@@ -4,9 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #deifines
 momentum_weight = 1
-
 data = pd.read_pickle('data.pkl')
-
 tickers = pd.read_csv('tickers.csv')
 tickers = tickers.set_index('Company')
 
@@ -134,10 +132,7 @@ def main():
         # data.loc[ticker, 'alpha'] = alpha_score_series.values
         # tickers.loc[ticker, 'Alpha Score'] = alpha_score_series.iloc[-1]  # need last value
 
-
-
-        # Determine Recommended Action based on thresholds
-
+        # Determine Recommended Action based on thresholds FOR LATER USE
         # buy_mask = alpha_score_series > buy_threshold
         # sell_mask = alpha_score_series < sell_threshold
         # hold_mask = ~(buy_mask | sell_mask)

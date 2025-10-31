@@ -2,15 +2,15 @@ import yfinance as yf
 import pandas as pd
 
 # DEFINES
-interval = "1d"
-csv_file = "data.csv"
-
+data_period = "1d"
+pkl_file = "data.pkl"
 tickers = pd.read_csv('tickers.csv')
 data = []
 count = 0 
-# need to add exchange suffixes for some tickers
+# -- METHOD 1: Dividend details
+# yfinance tickers require the .AX suffix for ASX shares
 for ticker in tickers["Company"]:
-    info = yf.Ticker(ticker + ".AX").history(period="max", interval="1d")
+    info = yf.Ticker(ticker + ".AX").history(period="max", interval=data_period)
     info['Ticker'] = ticker
     info = info.set_index("Ticker", append=True)
     data.append(info)
@@ -20,15 +20,14 @@ for ticker in tickers["Company"]:
 df = pd.concat(data)
 df = df.reorder_levels(["Ticker", "Date"]).sort_index()
 
-# -- METHOD 2 for no dividend details
+# -- METHOD 2: No dividend details
 # tickers_list = [t + ".AX" for t in tickers["Company"]]
-# info = yf.download(tickers_list, period="max", interval="1d", group_by='ticker')
+# info = yf.download(tickers_list, period="max", interval=data_period, group_by='ticker')
 # info = info.set_index("Ticker", append=True)
 # info.columns = info.columns.set_names(['Ticker', 'Field'])
 # df = info.stack(level='Ticker').swaplevel().sort_index() 
 # df.index.names = ['Ticker', 'Date']
 # df.columns.name = None
 
-
-df.to_pickle("data.pkl")
+df.to_pickle(pkl_file)
 

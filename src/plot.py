@@ -8,7 +8,7 @@ while True:
     try:
         ticker = input("Enter Ticker: ")
         feat =  input("Enter Feature: ")
-        break  # Exit the loop if conversion is successful
+        break
     except ValueError:
         print("Invalid input")
 
