@@ -77,6 +77,14 @@ def proportion_positive(df, period):
     df["prop_pos"] = df["prop_pos"].shift(1)
     return df["prop_pos"]
 
+def zscore(df):
+    return (df - df.mean()) / df.std()
+
+def rank_normalize(series):
+    return series.rank(pct=True) - 0.5
+
+
+
 # Parameters
 period = 21
 momentum_period = 10
@@ -85,8 +93,16 @@ buy_threshold = 0.6
 sell_threshold = 0.4
 rsi_lookback = 14
 
+FACTOR_WEIGHTS = {
+    'mom': 0.30,
+    'prop_pos': 0.25,
+    'rsi': 0.15,
+    'vol': 0.15,
+    'cross_signals': 0.15
+}
+
 def main():
-    # i need to itterate through each date for each ticker
+    # Itterate through each date for each ticker
     for ticker in data.index.get_level_values('Ticker').unique():
         company_data = data.xs(ticker, level='Ticker')
 
@@ -128,24 +144,40 @@ def main():
         data.loc[ticker, 'prop_pos'] = prop_pos_series.values
 
         # calculate Alpha Score
-        # alpha_score_series = prop_pos_series
-        # data.loc[ticker, 'alpha'] = alpha_score_series.values
-        # tickers.loc[ticker, 'Alpha Score'] = alpha_score_series.iloc[-1]  # need last value
+        latest_date = data.index.get_level_values('Date').max()
+        latest = data.xs(latest_date, level='Date').copy()
 
-        # Determine Recommended Action based on thresholds FOR LATER USE
-        # buy_mask = alpha_score_series > buy_threshold
-        # sell_mask = alpha_score_series < sell_threshold
-        # hold_mask = ~(buy_mask | sell_mask)
+        latest['mom_z'] = zscore(latest['mom'])
+        latest['prop_pos_z'] = zscore(latest['prop_pos'])
 
-        # data.loc[(ticker, buy_mask.index[buy_mask]), 'Recommended Action'] = 'Buy'
-        # data.loc[(ticker, sell_mask.index[sell_mask]), 'Recommended Action'] = 'Sell'
-        # data.loc[(ticker, hold_mask.index[hold_mask]), 'Recommended Action'] = 'Hold'
+        # RSI – distance from 50 (closer is better)
+        latest['rsi_adj'] = -abs(latest['rsi'] - 50)
+        latest['rsi_z'] = zscore(latest['rsi_adj'])
 
-        # save last action
-        # tickers.loc[ticker, 'Recommended Action'] = data.loc[ticker, 'Recommended Action'].iloc[-1]
+        # Volatility – lower is better
+        latest['vol_z'] = zscore(-latest['vol'])
+
+        # SMA Cross already directional (-1, 0, 1)
+        latest['cross_z'] = latest['cross_signals']
+
+        latest['Alpha Score'] = (
+            FACTOR_WEIGHTS['mom'] * latest['mom_z'] +
+            FACTOR_WEIGHTS['prop_pos'] * latest['prop_pos_z'] +
+            FACTOR_WEIGHTS['rsi'] * latest['rsi_z'] +
+            FACTOR_WEIGHTS['vol'] * latest['vol_z'] +
+            FACTOR_WEIGHTS['cross_signals'] * latest['cross_z']
+        )
+
+        latest['Rank'] = latest['Alpha Score'].rank(ascending=False)
+        latest = latest.sort_values('Alpha Score', ascending=False)
+
+    tickers['Alpha Score'] = latest['Alpha Score']
+    tickers['Rank'] = latest['Rank']
+    tickers.sort_values('Alpha Score', ascending=False, inplace=True)
+
+    tickers.to_csv('tickers.csv')
 
     data.to_csv('factors_data.csv')
     data.to_pickle('factors_data.pkl')
-
 
 main()
