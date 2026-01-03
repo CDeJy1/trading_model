@@ -9,8 +9,9 @@ tickers = pd.read_csv('tickers.csv')
 tickers = tickers.set_index('Company')
 
 # Initialize Alpha Score and indicator columns
-tickers['Return'] = 0
-tickers['Alpha Score'] = 0
+# tickers['Return | Period = max'] = 0
+# tickers['Average volatility'] = 0
+# tickers['Average Mom'] = 0
 
 ### FACTORS ###
 def returns(df):
@@ -83,8 +84,6 @@ def zscore(df):
 def rank_normalize(series):
     return series.rank(pct=True) - 0.5
 
-
-
 # Parameters
 period = 21
 momentum_period = 10
@@ -100,6 +99,8 @@ FACTOR_WEIGHTS = {
     'vol': 0.15,
     'cross_signals': 0.15
 }
+
+Factors = ['prop_pos', 'rsi']
 
 def main():
     # Itterate through each date for each ticker
@@ -143,41 +144,30 @@ def main():
         prop_pos_series  = proportion_positive(company_data, period)
         data.loc[ticker, 'prop_pos'] = prop_pos_series.values
 
-        # calculate Alpha Score
-        latest_date = data.index.get_level_values('Date').max()
-        latest = data.xs(latest_date, level='Date').copy()
+        
+    # calculate alpha
+    # latest factor values and data for all tickers
+    latest = data.sort_values("Date").groupby("Ticker").tail(1)
 
-        latest['mom_z'] = zscore(latest['mom'])
-        latest['prop_pos_z'] = zscore(latest['prop_pos'])
 
-        # RSI – distance from 50 (closer is better)
-        latest['rsi_adj'] = -abs(latest['rsi'] - 50)
-        latest['rsi_z'] = zscore(latest['rsi_adj'])
 
-        # Volatility – lower is better
-        latest['vol_z'] = zscore(-latest['vol'])
 
-        # SMA Cross already directional (-1, 0, 1)
-        latest['cross_z'] = latest['cross_signals']
+    # calulate z-score for prop_pos
+    factors = ['prop_pos', 'rsi']
 
-        latest['Alpha Score'] = (
-            FACTOR_WEIGHTS['mom'] * latest['mom_z'] +
-            FACTOR_WEIGHTS['prop_pos'] * latest['prop_pos_z'] +
-            FACTOR_WEIGHTS['rsi'] * latest['rsi_z'] +
-            FACTOR_WEIGHTS['vol'] * latest['vol_z'] +
-            FACTOR_WEIGHTS['cross_signals'] * latest['cross_z']
-        )
+    factor_sign = {
+        'prop_pos':  1,
+        'rsi':      -1,   # mean reversion
+    }
+    
+    for f in factors:
+        z = ((latest[f] - latest[f].mean()) / latest[f].std())
+        latest[f + '_z'] = z * factor_sign[f]
+    
+    latest['score'] =  latest[[f + '_z' for f in factors]].sum(axis=1)
 
-        latest['Rank'] = latest['Alpha Score'].rank(ascending=False)
-        latest = latest.sort_values('Alpha Score', ascending=False)
-
-    tickers['Alpha Score'] = latest['Alpha Score']
-    tickers['Rank'] = latest['Rank']
-    tickers.sort_values('Alpha Score', ascending=False, inplace=True)
-
-    tickers.to_csv('tickers.csv')
-
-    data.to_csv('factors_data.csv')
+    score = latest['score'].sort_values(ascending=False)
+    score.to_csv('rank.csv')
     data.to_pickle('factors_data.pkl')
 
 main()
