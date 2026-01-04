@@ -93,11 +93,11 @@ sell_threshold = 0.4
 rsi_lookback = 14
 
 FACTOR_WEIGHTS = {
-    'mom': 0.30,
+    'mom': 0,
     'prop_pos': 0.25,
-    'rsi': 0.15,
-    'vol': 0.15,
-    'cross_signals': 0.15
+    'rsi': 0.75,
+    'vol': 0,
+    'cross_signals': 0
 }
 
 Factors = ['prop_pos', 'rsi']
