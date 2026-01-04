@@ -153,7 +153,7 @@ def main():
 
     factor_sign = {
         'prop_pos':  1,
-        'rsi':      -1,   # mean reversion
+        'rsi':      1,
     }
     
     for f in factors:
