@@ -144,13 +144,9 @@ def main():
         prop_pos_series  = proportion_positive(company_data, period)
         data.loc[ticker, 'prop_pos'] = prop_pos_series.values
 
-        
     # calculate alpha
     # latest factor values and data for all tickers
     latest = data.sort_values("Date").groupby("Ticker").tail(1)
-
-
-
 
     # calulate z-score for prop_pos
     factors = ['prop_pos', 'rsi']
