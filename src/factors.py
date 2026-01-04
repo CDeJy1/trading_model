@@ -162,10 +162,10 @@ def main():
     
     for f in factors:
         z = ((latest[f] - latest[f].mean()) / latest[f].std())
-        latest[f + '_z'] = z * factor_sign[f]
+        latest[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
     
-    latest['score'] =  latest[[f + '_z' for f in factors]].sum(axis=1)
-
+    latest['score'] = latest[[f + '_z' for f in factors]].sum(axis=1)
+    latest['score'] = (latest['score'] - latest['score'].min()) / (latest['score'].max() - latest['score'].min())
     score = latest['score'].sort_values(ascending=False)
     score.to_csv('rank.csv')
     data.to_pickle('factors_data.pkl')
