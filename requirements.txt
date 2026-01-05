@@ -1,6 +1,5 @@
 pandas
 yfinance
-warnings
 matplotlib
 numpy
 requests
