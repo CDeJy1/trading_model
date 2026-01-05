@@ -4,7 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #deifines
 data = pd.read_pickle('raw_data.pkl')
-tickers = pd.read_csv('tickers.csv')
+tickers = pd.read_csv('tickers.xlsx')
 tickers = tickers.set_index('Company')
 
 ### FACTORS ###

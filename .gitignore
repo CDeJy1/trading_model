@@ -4,3 +4,4 @@ factors_data.csv
 rank.csv
 tickers.pkl
 ticker_scrape.py
+raw_data.pkl
