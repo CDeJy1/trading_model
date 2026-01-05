@@ -3,8 +3,8 @@ import pandas as pd
 
 # DEFINES
 data_period = "1d"
-pkl_file = "data.pkl"
-tickers = pd.read_pickle('tickers.pkl')
+pkl_file = "raw_data.pkl"
+tickers = pd.read_csv('tickers.csv')
 data = []
 count = 0 
 

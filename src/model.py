@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #deifines
-data = pd.read_pickle('data.pkl')
+data = pd.read_pickle('raw_data.pkl')
 tickers = pd.read_csv('tickers.csv')
 tickers = tickers.set_index('Company')
 
