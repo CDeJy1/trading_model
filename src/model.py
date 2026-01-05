@@ -2,10 +2,8 @@ import pandas as pd
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-#deifines
+# get data
 data = pd.read_pickle('raw_data.pkl')
-tickers = pd.read_csv('tickers.csv')
-tickers = tickers.set_index('Company')
 
 ### FACTORS ###
 def returns(df):
@@ -104,7 +102,6 @@ def main():
         return_series = returns(company_data)
         data.loc[ticker, 'ret'] = return_series.values
         company_data['ret'] = return_series.values
-        tickers.loc[ticker, 'ret'] = data.loc[ticker, 'ret'].iloc[-1]
 
         # Volatility
         volatility_series = volatility(company_data, volatility_period)
@@ -154,10 +151,12 @@ def main():
         z = ((latest[f] - latest[f].mean()) / latest[f].std())
         latest[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
     
-    latest['score'] = latest[[f + '_z' for f in factors]].sum(axis=1)
-    latest['score'] = (latest['score'] - latest['score'].min()) / (latest['score'].max() - latest['score'].min())
-    score = latest['score'].sort_values(ascending=False)
-    score.to_csv('rank.csv')
+    latest['alpha'] = latest[[f + '_z' for f in factors]].sum(axis=1)
+    latest['alpha'] = (latest['alpha'] - latest['alpha'].min()) / (latest['alpha'].max() - latest['alpha'].min())
+    alpha = latest['alpha'].sort_values(ascending=False)
+    total = alpha.sum()
+    weight = alpha / total
+    weight.to_csv('portfolio_weights.csv')
     data.to_pickle('factors_data.pkl')
 
 main()

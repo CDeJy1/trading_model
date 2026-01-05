@@ -1,7 +1,7 @@
 data.pkl
 factors_data.pkl
 factors_data.csv
-rank.csv
+portfolio_weights.csv
 tickers.pkl
 raw_data.pkl
 
