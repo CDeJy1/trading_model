@@ -1,0 +1,7 @@
+pandas
+yfinance
+warnings
+matplotlib
+numpy
+requests
+beautifulsoup4
