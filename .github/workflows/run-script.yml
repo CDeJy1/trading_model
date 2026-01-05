@@ -21,5 +21,5 @@ jobs:
             
             - name: Run model
               run: |
-                python data.py
-                python model.py
+                python src/data.py
+                python src/model.py
