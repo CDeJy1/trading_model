@@ -1,5 +1,5 @@
-### note ###
-# this script does not give up-to-date ticker list for ASX-300 (I couldn't find a website where scraping did not return a 403 error as cloudflare was being used ect... )
+### NOTE ###
+#  this script does not give up-to-date ticker list for ASX-300 (I couldn't find a website where scraping did not return a 403 error as cloudflare was being used ect... )
 
 import requests
 from bs4 import BeautifulSoup
