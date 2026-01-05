@@ -3,15 +3,9 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #deifines
-momentum_weight = 1
 data = pd.read_pickle('data.pkl')
 tickers = pd.read_csv('tickers.csv')
 tickers = tickers.set_index('Company')
-
-# Initialize Alpha Score and indicator columns
-# tickers['Return | Period = max'] = 0
-# tickers['Average volatility'] = 0
-# tickers['Average Mom'] = 0
 
 ### FACTORS ###
 def returns(df):
@@ -69,7 +63,6 @@ def crosses(df):
     # below to above is golden
 
     return cross_events
-
 
 def proportion_positive(df, period):
     df = df.copy()
@@ -137,8 +130,8 @@ def main():
         data.loc[ticker, 'rsi'] = rsi_series.values
 
         # Momentum
-        # momentum_series = calculate_momentum(company_data, period)
-        # data.loc[ticker, 'mom'] = momentum_series.values
+        momentum_series = calculate_momentum(company_data, period)
+        data.loc[ticker, 'mom'] = momentum_series.values
 
         # Proportion Positive
         prop_pos_series  = proportion_positive(company_data, period)
@@ -152,8 +145,9 @@ def main():
     factors = ['prop_pos', 'rsi']
 
     factor_sign = {
-        'prop_pos':  1,
-        'rsi':      1,
+        'prop_pos': 1,
+        'rsi': 1,
+        'mom': 1
     }
     
     for f in factors:

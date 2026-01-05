@@ -4,12 +4,13 @@ import pandas as pd
 # DEFINES
 data_period = "1d"
 pkl_file = "data.pkl"
-tickers = pd.read_csv('tickers.csv')
+tickers = pd.read_pickle('tickers.pkl')
 data = []
 count = 0 
+
 # -- METHOD 1: Dividend details
 # yfinance tickers require the .AX suffix for ASX shares
-for ticker in tickers["Company"]:
+for ticker in tickers:
     info = yf.Ticker(ticker + ".AX").history(period="max", interval=data_period)
     info['Ticker'] = ticker
     info = info.set_index("Ticker", append=True)
