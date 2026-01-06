@@ -77,21 +77,20 @@ def rank_normalize(series):
 
 # Parameters
 p = 21
-momentum_period = 10
-volatility_period = 10
+momentum_period = 21
+volatility_period = 21
 buy_threshold = 0.6
 sell_threshold = 0.4
 rsi_lookback = 14
 
 FACTOR_WEIGHTS = {
     'mom': 0.4,
-    'prop_pos': 0.15,
-    'rsi': 0.45,
-    'vol': 0,
-    'cross_signals': 0
+    'prop_pos': 0.05,
+    'rsi': 0.3,
+    'vol': 0.25,
 }
 
-Factors = ['prop_pos', 'rsi', 'mom']
+factors = ['mom', 'vol']
 
 def main():
     # Itterate through each date for each ticker
@@ -119,7 +118,6 @@ def main():
         company_data['sma50'] = sma50_series.values
         company_data['sma200'] = sma50_series.values
 
-
         # Crossing SMA
         cross_series = crosses(company_data)
         data.loc[ticker, 'cross_signals'] = cross_series.values
@@ -141,16 +139,15 @@ def main():
     latest = data.sort_values("Date").groupby("Ticker").tail(1)
 
     # calulate z-score for prop_pos
-    factors = ['prop_pos', 'rsi', 'mom']
-
     factor_sign = {
         'prop_pos': 1,
         'rsi': 1,
-        'mom': 1
+        'mom': 1,
+        'vol': -1
     }
     
     for f in factors:
-        z = ((latest[f] - latest[f].mean()) / latest[f].std())
+        z = ((latest[f] - latest[f].mean()) / latest[f].std()) # this is to normalise the signal
         latest[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
     
     latest['alpha'] = latest[[f + '_z' for f in factors]].sum(axis=1)
