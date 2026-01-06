@@ -90,7 +90,7 @@ FACTOR_WEIGHTS = {
     'vol': 0.25,
 }
 
-factors = ['mom', 'vol']
+factors = ['mom', 'vol', 'rsi', 'prop_pos']
 
 def main():
     # Itterate through each date for each ticker
