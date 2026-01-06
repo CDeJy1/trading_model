@@ -76,7 +76,7 @@ def rank_normalize(series):
     return series.rank(pct=True) - 0.5
 
 # Parameters
-period = 21
+p = 21
 momentum_period = 10
 volatility_period = 10
 buy_threshold = 0.6
@@ -84,14 +84,14 @@ sell_threshold = 0.4
 rsi_lookback = 14
 
 FACTOR_WEIGHTS = {
-    'mom': 0,
-    'prop_pos': 0.25,
-    'rsi': 0.75,
+    'mom': 0.4,
+    'prop_pos': 0.15,
+    'rsi': 0.45,
     'vol': 0,
     'cross_signals': 0
 }
 
-Factors = ['prop_pos', 'rsi']
+Factors = ['prop_pos', 'rsi', 'mom']
 
 def main():
     # Itterate through each date for each ticker
@@ -115,8 +115,10 @@ def main():
         data.loc[ticker, 'sma10'] = sma10_series.values
         data.loc[ticker, 'sma50'] = sma50_series.values
         data.loc[ticker, 'sma200'] = sma200_series.values
+        company_data['sma10'] = sma50_series.values
         company_data['sma50'] = sma50_series.values
-        company_data['sma200'] = sma200_series.values
+        company_data['sma200'] = sma50_series.values
+
 
         # Crossing SMA
         cross_series = crosses(company_data)
@@ -127,11 +129,11 @@ def main():
         data.loc[ticker, 'rsi'] = rsi_series.values
 
         # Momentum
-        momentum_series = calculate_momentum(company_data, period)
+        momentum_series = calculate_momentum(company_data, p)
         data.loc[ticker, 'mom'] = momentum_series.values
 
         # Proportion Positive
-        prop_pos_series  = proportion_positive(company_data, period)
+        prop_pos_series  = proportion_positive(company_data, p)
         data.loc[ticker, 'prop_pos'] = prop_pos_series.values
 
     # calculate alpha
@@ -139,7 +141,7 @@ def main():
     latest = data.sort_values("Date").groupby("Ticker").tail(1)
 
     # calulate z-score for prop_pos
-    factors = ['prop_pos', 'rsi']
+    factors = ['prop_pos', 'rsi', 'mom']
 
     factor_sign = {
         'prop_pos': 1,
