@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -11,7 +12,6 @@ def returns(df):
     if len(df) < 2:
         return None  # Not enough data to calculate return
     df["Return"] = df['Close'].pct_change()
-
     return df["Return"]
 
 def volatility(df, period):
@@ -21,8 +21,10 @@ def volatility(df, period):
     return df['vol']
 
 def calculate_momentum(df, period):
+    # This is percentage change momentum (Rate of change / ROC)
     df = df.copy()
     df["mom"] = df["Close"].pct_change(periods=period)
+    # Shift one ahead to eliminate look ahead bias
     df["mom"] = df["mom"].shift(1) 
     return df["mom"]
 
@@ -44,11 +46,9 @@ def rsi(df, period):
     return df['rsi']
 
 def sma(df, period):
-    df = df.copy()
-    return df['Close'].rolling(window=period).mean()
+    return df['Close'].rolling(window=period).mean().shift(1)
 
-def crosses(df):
-    df = df.copy()
+def cross_events(df):
     df["crosstype"] = df['sma50'].gt(df['sma200']).astype(int) * 2 - 1
     crossover_signal = df['crosstype'].diff()
     golden_cross = (crossover_signal == 2)
@@ -59,8 +59,21 @@ def crosses(df):
     # go from "death cross," where a 50 SMA falls below a 200 SMA 
     # golden cross when 50 above 200
     # below to above is golden
-
     return cross_events
+
+def ma_trend_strenght(df):
+    df['ma_trend_strength'] = (df['sma50'] - df['sma200']) / df['sma200']
+    return df['ma_trend_strength'].shift(1)
+
+def gc_event_time_decay(df):
+    #tslgc time since last golden cross (longer time could mean less profitable investment)
+    decay_speed = 0.02
+    date = df.index.get_level_values('Date')
+    df['gc_date'] = date.where(df['cross_signals'] == 1)
+    df['last_gc_date'] = df['gc_date'].ffill()
+    df['days_since_gc'] = (date - df['last_gc_date']).dt.days
+    df['tslgc'] = np.exp((-decay_speed) * df['days_since_gc']).shift(1)
+    return df['tslgc']
 
 def proportion_positive(df, period):
     df = df.copy()
@@ -81,17 +94,18 @@ momentum_period = 21
 volatility_period = 21
 buy_threshold = 0.6
 sell_threshold = 0.4
-rsi_lookback = 14
+rsi_lookback = 21
 
 FACTOR_WEIGHTS = {
-    'mom': 0.4,
+    'mom': 0.3,
     'prop_pos': 0.05,
-    'rsi': 0.3,
-    'vol': 0.25,
+    'vol': 0.15,
+    'tslgc': 0.1,
+    'ma_trend_strength': 0.4
+    #TODO: fix nums
 }
 
-factors = ['mom', 'vol', 'rsi', 'prop_pos']
-
+factors = ['mom', 'vol', 'prop_pos', 'tslgc', 'ma_trend_strength']
 def main():
     # Itterate through each date for each ticker
     for ticker in data.index.get_level_values('Ticker').unique():
@@ -114,13 +128,16 @@ def main():
         data.loc[ticker, 'sma10'] = sma10_series.values
         data.loc[ticker, 'sma50'] = sma50_series.values
         data.loc[ticker, 'sma200'] = sma200_series.values
-        company_data['sma10'] = sma50_series.values
+        company_data['sma10'] = sma10_series.values
         company_data['sma50'] = sma50_series.values
-        company_data['sma200'] = sma50_series.values
+        company_data['sma200'] = sma200_series.values
 
         # Crossing SMA
-        cross_series = crosses(company_data)
-        data.loc[ticker, 'cross_signals'] = cross_series.values
+        data.loc[ticker, 'cross_signals'] = cross_events(company_data).values
+        company_data['cross_signals'] = data.loc[ticker, 'cross_signals']
+        # SMA Cross Strength Signal and Time Since series
+        data.loc[ticker , 'ma_trend_strength'] = ma_trend_strenght(company_data).values
+        data.loc[ticker , 'tslgc'] = gc_event_time_decay(company_data).values
 
         # RSI
         rsi_series = rsi(company_data, rsi_lookback)
@@ -141,9 +158,10 @@ def main():
     # calulate z-score for prop_pos
     factor_sign = {
         'prop_pos': 1,
-        'rsi': 1,
         'mom': 1,
-        'vol': -1
+        'vol': -1,
+        'tslgc': -1, #TODO combined tslgc and ma_trend_strength to make one moving average score
+        'ma_trend_strength': 1
     }
     
     for f in factors:
@@ -153,9 +171,13 @@ def main():
     latest['alpha'] = latest[[f + '_z' for f in factors]].sum(axis=1)
     latest['alpha'] = (latest['alpha'] - latest['alpha'].min()) / (latest['alpha'].max() - latest['alpha'].min())
     alpha = latest['alpha'].sort_values(ascending=False)
+
     total = alpha.sum()
     weight = alpha / total
     weight.to_csv('portfolio_weights.csv')
     data.to_pickle('factors_data.pkl')
-
 main()
+
+
+#TODO list:
+# optimise each signal based on setting with best correlation
