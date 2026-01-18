@@ -14,6 +14,9 @@ def returns(df):
     df["Return"] = df['Close'].pct_change()
     return df["Return"]
 
+def future_ret(df, period):
+    return df['ret'].rolling(window=period).sum()
+    
 def volatility(df, period):
     if len(df) < period:
         return None  # Not enough data to calculate volatility
@@ -88,6 +91,25 @@ def zscore(df):
 def rank_normalize(series):
     return series.rank(pct=True) - 0.5
 
+#for getting alpha score all time
+def all_time_alpha(df):
+    for f in factors:
+        z = ((df[f] - df[f].mean()) / df[f].std()) # this is to normalise the signal
+        df[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
+
+    df['alpha'] = df[[f + '_z' for f in factors]].sum(axis=1)
+
+    return df['alpha']
+
+def get_rank(df):
+    latest = df.sort_values("Date").groupby("Ticker").tail(1)
+    latest['alpha'] = (latest['alpha'] - latest['alpha'].min()) / (latest['alpha'].max() - latest['alpha'].min())
+    alpha = latest['alpha'].sort_values(ascending=False)
+
+    total = alpha.sum()
+    weight = alpha / total
+    weight.to_csv('portfolio_weights.csv')
+
 # Parameters
 p = 21
 momentum_period = 21
@@ -95,6 +117,7 @@ volatility_period = 21
 buy_threshold = 0.6
 sell_threshold = 0.4
 rsi_lookback = 21
+future_ret_p = 21
 
 FACTOR_WEIGHTS = {
     'mom': 0.3,
@@ -103,6 +126,14 @@ FACTOR_WEIGHTS = {
     'tslgc': 0.1,
     'ma_trend_strength': 0.4
     #TODO: fix nums
+}
+
+factor_sign = {
+    'prop_pos': 1,
+    'mom': 1,
+    'vol': -1,
+    'tslgc': -1, #TODO combined tslgc and ma_trend_strength to make one moving average score
+    'ma_trend_strength': 1
 }
 
 factors = ['mom', 'vol', 'prop_pos', 'tslgc', 'ma_trend_strength']
@@ -115,6 +146,9 @@ def main():
         return_series = returns(company_data)
         data.loc[ticker, 'ret'] = return_series.values
         company_data['ret'] = return_series.values
+
+        future_return_series = future_ret(company_data, future_ret_p)
+        data.loc[ticker, 'future_ret'] = future_return_series.values
 
         # Volatility
         volatility_series = volatility(company_data, volatility_period)
@@ -151,31 +185,15 @@ def main():
         prop_pos_series  = proportion_positive(company_data, p)
         data.loc[ticker, 'prop_pos'] = prop_pos_series.values
 
-    # calculate alpha
-    # latest factor values and data for all tickers
-    latest = data.sort_values("Date").groupby("Ticker").tail(1)
+        # alpha_series
+        factor_data = data.loc[ticker]
+        alpha_series = all_time_alpha(factor_data)
+        data.loc[ticker, 'alpha'] = alpha_series.values
 
-    # calulate z-score for prop_pos
-    factor_sign = {
-        'prop_pos': 1,
-        'mom': 1,
-        'vol': -1,
-        'tslgc': -1, #TODO combined tslgc and ma_trend_strength to make one moving average score
-        'ma_trend_strength': 1
-    }
-    
-    for f in factors:
-        z = ((latest[f] - latest[f].mean()) / latest[f].std()) # this is to normalise the signal
-        latest[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
-    
-    latest['alpha'] = latest[[f + '_z' for f in factors]].sum(axis=1)
-    latest['alpha'] = (latest['alpha'] - latest['alpha'].min()) / (latest['alpha'].max() - latest['alpha'].min())
-    alpha = latest['alpha'].sort_values(ascending=False)
 
-    total = alpha.sum()
-    weight = alpha / total
-    weight.to_csv('portfolio_weights.csv')
+    get_rank(data)
     data.to_pickle('factors_data.pkl')
+
 main()
 
 
