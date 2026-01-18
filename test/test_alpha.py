@@ -15,12 +15,7 @@ df = df.dropna(subset=["future_ret"])
 
 for ticker in ticker_list:
     company_data = df.xs(ticker, level='Ticker')
-
-    X = company_data[['alpha']].values
-    y = company_data['future_ret'].values
-    
-    reg = LinearRegression().fit(X, y)
-    correlation_list.append(reg.score(X, y))
+    correlation_list.append(company_data['alpha'].corr(company_data['future_ret']))
 
 corr = str(st.mean(correlation_list))
 print("Correlation: " + corr)
