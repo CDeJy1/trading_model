@@ -20,7 +20,7 @@ def future_ret(df, period):
 def volatility(df, period):
     if len(df) < period:
         return None  # Not enough data to calculate volatility
-    df['vol'] = df['ret'].rolling(window=period).std()
+    df['vol'] = df['ret'].rolling(window=period).std().shift(1)
     return df['vol']
 
 def calculate_momentum(df, period):
@@ -46,7 +46,7 @@ def rsi(df, period):
     df['avg_l'] = ((df["loss"].shift(1).rolling(window=period).mean() * (period - 1)) + df['loss']) / period
     df['rsi'] = 100 - 100/(1 + df['avg_g']/df['avg_l'])
 
-    return df['rsi']
+    return df['rsi'].shift(1)
 
 def sma(df, period):
     return df['Close'].rolling(window=period).mean().shift(1)
@@ -64,9 +64,9 @@ def cross_events(df):
     # below to above is golden
     return cross_events
 
-def ma_trend_strenght(df):
+def ma_trend_strength(df):
     df['ma_trend_strength'] = (df['sma50'] - df['sma200']) / df['sma200']
-    return df['ma_trend_strength'].shift(1)
+    return df['ma_trend_strength']
 
 def gc_event_time_decay(df):
     #tslgc time since last golden cross (longer time could mean less profitable investment)
@@ -76,7 +76,7 @@ def gc_event_time_decay(df):
     df['last_gc_date'] = df['gc_date'].ffill()
     df['days_since_gc'] = (date - df['last_gc_date']).dt.days
     df['tslgc'] = np.exp((-decay_speed) * df['days_since_gc']).shift(1)
-    return df['tslgc']
+    return df['tslgc'].shift(1)
 
 def proportion_positive(df, period):
     df = df.copy()
@@ -170,7 +170,7 @@ def main():
         data.loc[ticker, 'cross_signals'] = cross_events(company_data).values
         company_data['cross_signals'] = data.loc[ticker, 'cross_signals']
         # SMA Cross Strength Signal and Time Since series
-        data.loc[ticker , 'ma_trend_strength'] = ma_trend_strenght(company_data).values
+        data.loc[ticker , 'ma_trend_strength'] = ma_trend_strength(company_data).values
         data.loc[ticker , 'tslgc'] = gc_event_time_decay(company_data).values
 
         # RSI
