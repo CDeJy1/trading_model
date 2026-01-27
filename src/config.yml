@@ -1,0 +1,29 @@
+FACTOR_WEIGHTS:
+  1m_mom: 0
+  prop_pos: 0
+  vol: 0
+  tslgc: 1
+  ma_trend_strength: 0
+
+factor_sign:
+  prop_pos: 1
+  _1m_mom: 1
+  _3m_mom:
+  _6m_mom:
+  vol: -1
+  tslgc: 1
+  ma_trend_strength: 1
+
+factors: 
+  - _1m_mom 
+  - _3m_mom
+  - _6m_mom
+  - vol 
+  - prop_pos 
+  - tslgc 
+  - ma_trend_strength
+
+p: 63
+volatility_period: 21
+rsi_lookback: 21
+future_ret_p: 63

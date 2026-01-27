@@ -1,10 +1,24 @@
 import pandas as pd
 import numpy as np
 import warnings
+import yaml
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # get data
-data = pd.read_pickle('raw_data.pkl')
+data = pd.read_pickle('src/raw_data.pkl')
+
+# read params
+with open('src/config.yml', 'r') as file:
+    configuration = yaml.safe_load(file)
+
+# FACTOR_WEIGHTS = configuration['FACTOR_WEIGHTS']
+factor_sign = configuration['factor_sign']
+factors = configuration['factors']
+p = configuration['p']
+volatility_period = configuration['volatility_period']
+rsi_lookback = configuration['rsi_lookback']
+future_ret_p = configuration['future_ret_p']
 
 ### FACTORS ###
 def returns(df):
@@ -15,7 +29,7 @@ def returns(df):
     return df["Return"]
 
 def future_ret(df, period):
-    return df['ret'].rolling(window=period).sum()
+    return df['ret'].rolling(window=period).sum().shift(-period)
     
 def volatility(df, period):
     if len(df) < period:
@@ -26,9 +40,7 @@ def volatility(df, period):
 def calculate_momentum(df, period):
     # This is percentage change momentum (Rate of change / ROC)
     df = df.copy()
-    df["mom"] = df["Close"].pct_change(periods=period)
-    # Shift one ahead to eliminate look ahead bias
-    df["mom"] = df["mom"].shift(1) 
+    df["mom"] = df["Close"].pct_change(periods=period).shift(1)
     return df["mom"]
 
 def rsi(df, period):
@@ -45,7 +57,6 @@ def rsi(df, period):
     df['avg_g'] = ((df["gain"].shift(1).rolling(window=period).mean() * (period - 1)) + df['gain']) / period
     df['avg_l'] = ((df["loss"].shift(1).rolling(window=period).mean() * (period - 1)) + df['loss']) / period
     df['rsi'] = 100 - 100/(1 + df['avg_g']/df['avg_l'])
-
     return df['rsi'].shift(1)
 
 def sma(df, period):
@@ -76,7 +87,7 @@ def gc_event_time_decay(df):
     df['last_gc_date'] = df['gc_date'].ffill()
     df['days_since_gc'] = (date - df['last_gc_date']).dt.days
     df['tslgc'] = np.exp((-decay_speed) * df['days_since_gc']).shift(1)
-    return df['tslgc'].shift(1)
+    return df['tslgc']
 
 def proportion_positive(df, period):
     df = df.copy()
@@ -92,12 +103,15 @@ def rank_normalize(series):
     return series.rank(pct=True) - 0.5
 
 #for getting alpha score all time
-def all_time_alpha(df):
+def all_time_alpha(df, FACTOR_WEIGHTS):
     for f in factors:
-        z = ((df[f] - df[f].mean()) / df[f].std()) # this is to normalise the signal
-        df[f + '_z'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
+        z = ((df[f] - df[f].expanding().mean()) / df[f].expanding().std()) # this is to normalise the signal
+        if z is not int or float:
+            df[f + '_alpha_contribution'] = 0
+        else: 
+            df[f + '_alpha_contribution'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
 
-    df['alpha'] = df[[f + '_z' for f in factors]].sum(axis=1)
+    df['alpha'] = df[[f + '_alpha_contribution' for f in factors]].sum(axis=1)
 
     return df['alpha']
 
@@ -110,34 +124,7 @@ def get_rank(df):
     weight = alpha / total
     weight.to_csv('portfolio_weights.csv')
 
-# Parameters
-p = 21
-momentum_period = 21
-volatility_period = 21
-buy_threshold = 0.6
-sell_threshold = 0.4
-rsi_lookback = 21
-future_ret_p = 21
-
-FACTOR_WEIGHTS = {
-    'mom': 0.3,
-    'prop_pos': 0.05,
-    'vol': 0.15,
-    'tslgc': 0.1,
-    'ma_trend_strength': 0.4
-    #TODO: fix nums
-}
-
-factor_sign = {
-    'prop_pos': 1,
-    'mom': 1,
-    'vol': -1,
-    'tslgc': -1, #TODO combined tslgc and ma_trend_strength to make one moving average score
-    'ma_trend_strength': 1
-}
-
-factors = ['mom', 'vol', 'prop_pos', 'tslgc', 'ma_trend_strength']
-def main():
+def main(FACTOR_WEIGHTS):
     # Itterate through each date for each ticker
     for ticker in data.index.get_level_values('Ticker').unique():
         company_data = data.xs(ticker, level='Ticker')
@@ -178,8 +165,20 @@ def main():
         data.loc[ticker, 'rsi'] = rsi_series.values
 
         # Momentum
-        momentum_series = calculate_momentum(company_data, p)
-        data.loc[ticker, 'mom'] = momentum_series.values
+        momentum_series = calculate_momentum(company_data, 5)
+        data.loc[ticker, '_1w_mom'] = momentum_series.values
+
+        momentum_series = calculate_momentum(company_data, 21)
+        data.loc[ticker, '_1m_mom'] = momentum_series.values
+
+        momentum_series = calculate_momentum(company_data, 63)
+        data.loc[ticker, '_3m_mom'] = momentum_series.values
+
+        momentum_series = calculate_momentum(company_data, 126)
+        data.loc[ticker, '_6m_mom'] = momentum_series.values
+
+        momentum_series = calculate_momentum(company_data, 252)
+        data.loc[ticker, '_12m_mom'] = momentum_series.values
 
         # Proportion Positive
         prop_pos_series  = proportion_positive(company_data, p)
@@ -187,15 +186,12 @@ def main():
 
         # alpha_series
         factor_data = data.loc[ticker]
-        alpha_series = all_time_alpha(factor_data)
+        alpha_series = all_time_alpha(factor_data, FACTOR_WEIGHTS)
         data.loc[ticker, 'alpha'] = alpha_series.values
-
 
     get_rank(data)
     data.to_pickle('factors_data.pkl')
+    return data
 
-main()
+# main()
 
-
-#TODO list:
-# optimise each signal based on setting with best correlation
