@@ -6,10 +6,10 @@ import yaml
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # get data
-data = pd.read_pickle('src/raw_data.pkl')
+data = pd.read_pickle('raw_data.pkl')
 
 # read params
-with open('src/config.yml', 'r') as file:
+with open('config.yml', 'r') as file:
     configuration = yaml.safe_load(file)
 
 # FACTOR_WEIGHTS = configuration['FACTOR_WEIGHTS']
@@ -106,10 +106,7 @@ def rank_normalize(series):
 def all_time_alpha(df, FACTOR_WEIGHTS):
     for f in factors:
         z = ((df[f] - df[f].expanding().mean()) / df[f].expanding().std()) # this is to normalise the signal
-        if z is not int or float:
-            df[f + '_alpha_contribution'] = 0
-        else: 
-            df[f + '_alpha_contribution'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
+        df[f + '_alpha_contribution'] = z * factor_sign[f] * FACTOR_WEIGHTS[f]
 
     df['alpha'] = df[[f + '_alpha_contribution' for f in factors]].sum(axis=1)
 
@@ -122,7 +119,9 @@ def get_rank(df):
 
     total = alpha.sum()
     weight = alpha / total
-    weight.to_csv('portfolio_weights.csv')
+    weight.to_csv('src/portfolio_weights.csv')
+    weight.to_pickle('src/portfolio_weights.pkl')
+    return weight
 
 def main(FACTOR_WEIGHTS):
     # Itterate through each date for each ticker
@@ -190,8 +189,5 @@ def main(FACTOR_WEIGHTS):
         data.loc[ticker, 'alpha'] = alpha_series.values
 
     get_rank(data)
-    data.to_pickle('factors_data.pkl')
+    data.to_pickle('src/factors_data.pkl')
     return data
-
-# main()
-

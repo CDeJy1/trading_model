@@ -17,8 +17,9 @@ res = {}
 count = 0
 for weightings in weights:
     model_res = model.main(weightings)
-    cpy = model_res.dropna(subset=['future_ret', 'alpha'])
-    corr_value = cpy['alpha'].corr(cpy['future_ret'])
+    clean_data = model_res.dropna(subset=['future_ret', 'alpha']).sort_index(level='Date')
+    train_data = clean_data[clean_data.index.get_level_values('Date') < train_split_date]
+    corr_value = train_data['alpha'].corr(train_data['future_ret'])
     
     print(f"{corr_value}")
 
@@ -28,5 +29,8 @@ for weightings in weights:
 
     print(f"Weightings Complete: {count}/{num}")
 
-pd.DataFrame.from_dict(res, orient="index").to_csv('./train/data.csv')
+data = pd.DataFrame.from_dict(res, orient="index")
+data = data.sort_values(by='corr', ascending=False)
+print(data.head(1)['weights'].to_dict())
+data.to_csv('src/train/data.csv')
 

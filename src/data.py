@@ -4,15 +4,20 @@ import pandas as pd
 # DEFINES
 data_period = "1d"
 pkl_file = "raw_data.pkl"
-tickers = pd.read_csv('tickers.csv', header=None, names=['Ticker'])
-ticker_list = tickers['Ticker'].tolist() 
+
+ticker_file = 'tickers.csv'
+col_name = 'ASX code'
+
+tickers = pd.read_csv(ticker_file)
+# header=None, names=['Ticker']
+ticker_list = tickers[col_name].tolist() 
 data = []
 count = 0 
 
 # -- METHOD 1: Dividend details
-# yfinance tickers require the .AX suffix for ASX shares
+# yfinance tickers require the .AX suffix for ASX shares (get_tickers solves this)
 for ticker in ticker_list:
-    info = yf.Ticker(ticker + ".AX").history(period="max", interval=data_period)
+    info = yf.Ticker(ticker).history(period="max", interval=data_period)
     info['Ticker'] = ticker
     info = info.set_index("Ticker", append=True)
     data.append(info)
